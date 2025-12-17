@@ -1,0 +1,125 @@
+---
+- name: LAMP Dashboard Deployment on Amazon Linux
+  hosts: localhost
+  become: yes
+
+  vars:
+    packages:
+      - httpd
+      - mariadb105-server
+      - php
+      - php-fpm
+      - php-mysqlnd
+
+    services:
+      - httpd
+      - mariadb
+      - php-fpm
+
+  tasks:
+
+  - name: Install required packages
+    ansible.builtin.dnf:
+      name: "{{ packages }}"
+      state: present
+
+  - name: Enable and start services
+    ansible.builtin.systemd:
+      name: "{{ item }}"
+      state: started
+      enabled: true
+    loop: "{{ services }}"
+
+  - name: Deploy PHP dashboard website
+    ansible.builtin.copy:
+      dest: /var/www/html/index.php
+      owner: apache
+      group: apache
+      mode: '0644'
+      content: |
+        <?php
+          $status = [
+            "Web Server" => "ONLINE",
+            "Database"   => "CONNECTED",
+            "Stack Type" => "LAMP on Amazon Linux"
+          ];
+        ?>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Server Dashboard</title>
+          <style>
+            body {
+              background: #0f172a;
+              font-family: 'Segoe UI', sans-serif;
+              color: #e5e7eb;
+            }
+            .dashboard {
+              width: 720px;
+              margin: 100px auto;
+              background: #020617;
+              padding: 30px;
+              border-radius: 18px;
+              box-shadow: 0 0 25px rgba(0,255,255,0.15);
+            }
+            h1 {
+              text-align: center;
+              color: #22d3ee;
+            }
+            .badge {
+              display: inline-block;
+              padding: 6px 14px;
+              background: #16a34a;
+              color: white;
+              border-radius: 20px;
+              font-size: 13px;
+            }
+            .row {
+              margin: 15px 0;
+              padding: 14px;
+              background: #020617;
+              border-left: 4px solid #22d3ee;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 25px;
+              font-size: 12px;
+              color: #94a3b8;
+            }
+          </style>
+        </head>
+
+        <body>
+          <div class="dashboard">
+            <h1>SERVER STATUS DASHBOARD</h1>
+
+            <?php foreach($status as $k=>$v): ?>
+              <div class="row">
+                <b><?= $k ?>:</b>
+                <span class="badge"><?= $v ?></span>
+              </div>
+            <?php endforeach; ?>
+
+            <div class="row">
+              <b>PHP Version:</b> <?= phpversion(); ?>
+            </div>
+
+            <div class="row">
+              <b>Hostname:</b> <?= gethostname(); ?>
+            </div>
+
+            <div class="row">
+              <b>Server IP:</b> <?= $_SERVER['SERVER_ADDR']; ?>
+            </div>
+
+            <div class="row">
+              <b>Current Time:</b> <?= date("l, d M Y h:i:s A"); ?>
+            </div>
+
+            <div class="footer">
+              Provisioned with Ansible <br>
+              Maintained by <b>Rutika Kale</b>
+            </div>
+          </div>
+        </body>
+        </html>
